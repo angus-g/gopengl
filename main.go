@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/angus-g/go-obj/obj"
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.1/glfw"
 	"github.com/go-gl/mathgl/mgl32"
@@ -20,6 +21,8 @@ func init() {
 }
 
 func main() {
+	vertices, elements := obj.Parse("monkey.obj")
+
 	// initialize GLFW
 	if err := glfw.Init(); err != nil {
 		panic(err)
@@ -32,7 +35,7 @@ func main() {
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
 
-	window, err := glfw.CreateWindow(640, 480, "GOPenGL", nil, nil)
+	window, err := glfw.CreateWindow(640, 480, "GOpenGL", nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -63,22 +66,13 @@ func main() {
 
 	// set up position attribute with layout of vertices
 	posAttrib := uint32(gl.GetAttribLocation(program, gl.Str("position\x00")))
-	gl.VertexAttribPointer(posAttrib, 3, gl.FLOAT, false, 8*4, gl.PtrOffset(0))
+	gl.VertexAttribPointer(posAttrib, 3, gl.FLOAT, false, 3*4, gl.PtrOffset(0))
 	gl.EnableVertexAttribArray(posAttrib)
 
-	// vertex colour attribute
-	colAttrib := uint32(gl.GetAttribLocation(program, gl.Str("color\x00")))
-	gl.VertexAttribPointer(colAttrib, 3, gl.FLOAT, false, 8*4, gl.PtrOffset(3*4))
-	gl.EnableVertexAttribArray(colAttrib)
-
-	// vertex texture coordinate attribute
-	texAttrib := uint32(gl.GetAttribLocation(program, gl.Str("texCoord\x00")))
-	gl.VertexAttribPointer(texAttrib, 2, gl.FLOAT, false, 8*4, gl.PtrOffset(6*4))
-	gl.EnableVertexAttribArray(texAttrib)
-
-	if _, err := newTexture("kitten.png", gl.TEXTURE0); err != nil {
-		panic(err)
-	}
+	var ebo uint32
+	gl.GenBuffers(1, &ebo)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(elements)*4, gl.Ptr(elements), gl.STATIC_DRAW)
 
 	uniModel := gl.GetUniformLocation(program, gl.Str("model\x00"))
 	uniView := gl.GetUniformLocation(program, gl.Str("view\x00"))
@@ -103,7 +97,7 @@ func main() {
 		matRot := mgl32.HomogRotate3DZ(float32(glfw.GetTime() - startTime))
 		gl.UniformMatrix4fv(uniModel, 1, false, &matRot[0])
 
-		gl.DrawArrays(gl.TRIANGLES, 0, 36)
+		gl.DrawElements(gl.TRIANGLES, int32(len(elements)), gl.UNSIGNED_INT, gl.PtrOffset(0))
 
 		window.SwapBuffers()
 		glfw.PollEvents()
@@ -202,55 +196,4 @@ func newTexture(file string, texNum uint32) (uint32, error) {
 		0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(rgba.Pix))
 
 	return texture, nil
-}
-
-var vertices = []float32{
-	-0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
-	0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
-	0.5, 0.5, -0.5, 1.0, 1.0, 1.0, 1.0, 1.0,
-	0.5, 0.5, -0.5, 1.0, 1.0, 1.0, 1.0, 1.0,
-	-0.5, 0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 1.0,
-	-0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
-
-	-0.5, -0.5, 0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
-	0.5, -0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
-	0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 1.0,
-	0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 1.0,
-	-0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 0.0, 1.0,
-	-0.5, -0.5, 0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
-
-	-0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
-	-0.5, 0.5, -0.5, 1.0, 1.0, 1.0, 1.0, 1.0,
-	-0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 1.0,
-	-0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 1.0,
-	-0.5, -0.5, 0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
-	-0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
-
-	0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
-	0.5, 0.5, -0.5, 1.0, 1.0, 1.0, 1.0, 1.0,
-	0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 1.0,
-	0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 1.0,
-	0.5, -0.5, 0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
-	0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
-
-	-0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 1.0,
-	0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 1.0, 1.0,
-	0.5, -0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
-	0.5, -0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
-	-0.5, -0.5, 0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
-	-0.5, -0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 1.0,
-
-	-0.5, 0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 1.0,
-	0.5, 0.5, -0.5, 1.0, 1.0, 1.0, 1.0, 1.0,
-	0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
-	0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 0.0,
-	-0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 0.0, 0.0,
-	-0.5, 0.5, -0.5, 1.0, 1.0, 1.0, 0.0, 1.0,
-
-	-1.0, -1.0, -0.5, 0.0, 0.0, 0.0, 0.0, 0.0,
-	1.0, -1.0, -0.5, 0.0, 0.0, 0.0, 1.0, 0.0,
-	1.0, 1.0, -0.5, 0.0, 0.0, 0.0, 1.0, 1.0,
-	1.0, 1.0, -0.5, 0.0, 0.0, 0.0, 1.0, 1.0,
-	-1.0, 1.0, -0.5, 0.0, 0.0, 0.0, 0.0, 1.0,
-	-1.0, -1.0, -0.5, 0.0, 0.0, 0.0, 0.0, 0.0,
 }
