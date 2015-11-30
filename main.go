@@ -21,7 +21,7 @@ func init() {
 }
 
 func main() {
-	vertices, elements := obj.Parse("monkey.obj")
+	vertices, normals := obj.Parse(os.Args[1])
 
 	// initialize GLFW
 	if err := glfw.Init(); err != nil {
@@ -59,9 +59,11 @@ func main() {
 	gl.BindVertexArray(vao)
 
 	// vertex buffer with per-vertex data
-	var vbo uint32
-	gl.GenBuffers(1, &vbo)
-	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
+	var vbo [2]uint32
+	gl.GenBuffers(2, &vbo[0])
+
+	// position data
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[0])
 	gl.BufferData(gl.ARRAY_BUFFER, len(vertices)*4, gl.Ptr(vertices), gl.STATIC_DRAW)
 
 	// set up position attribute with layout of vertices
@@ -69,10 +71,13 @@ func main() {
 	gl.VertexAttribPointer(posAttrib, 3, gl.FLOAT, false, 3*4, gl.PtrOffset(0))
 	gl.EnableVertexAttribArray(posAttrib)
 
-	var ebo uint32
-	gl.GenBuffers(1, &ebo)
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo)
-	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(elements)*4, gl.Ptr(elements), gl.STATIC_DRAW)
+	// normal data
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo[1])
+	gl.BufferData(gl.ARRAY_BUFFER, len(normals)*4, gl.Ptr(normals), gl.STATIC_DRAW)
+
+	normAttrib := uint32(gl.GetAttribLocation(program, gl.Str("normal\x00")))
+	gl.VertexAttribPointer(normAttrib, 3, gl.FLOAT, false, 3*4, gl.PtrOffset(0))
+	gl.EnableVertexAttribArray(normAttrib)
 
 	uniModel := gl.GetUniformLocation(program, gl.Str("model\x00"))
 	uniView := gl.GetUniformLocation(program, gl.Str("view\x00"))
@@ -86,6 +91,12 @@ func main() {
 	matProj := mgl32.Perspective(mgl32.DegToRad(45.0), 640.0/480.0, 1.0, 10.0)
 	gl.UniformMatrix4fv(uniProj, 1, false, &matProj[0])
 
+	uniLightDir := gl.GetUniformLocation(program, gl.Str("lightDir\x00"))
+	uniLightCol := gl.GetUniformLocation(program, gl.Str("lightCol\x00"))
+
+	gl.Uniform3f(uniLightDir, -0.5, 0.0, -1.0)
+	gl.Uniform3f(uniLightCol, 0.0, 0.5, 0.5)
+
 	startTime := glfw.GetTime()
 	gl.Enable(gl.DEPTH_TEST)
 	gl.ClearColor(1.0, 1.0, 1.0, 1.0)
@@ -97,7 +108,7 @@ func main() {
 		matRot := mgl32.HomogRotate3DZ(float32(glfw.GetTime() - startTime))
 		gl.UniformMatrix4fv(uniModel, 1, false, &matRot[0])
 
-		gl.DrawElements(gl.TRIANGLES, int32(len(elements)), gl.UNSIGNED_INT, gl.PtrOffset(0))
+		gl.DrawArrays(gl.TRIANGLES, 0, int32(len(vertices)))
 
 		window.SwapBuffers()
 		glfw.PollEvents()
